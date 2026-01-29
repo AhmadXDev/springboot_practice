@@ -1,14 +1,22 @@
 package com.elm.learning2.controller;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import com.elm.learning2.service.TaskService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@ResetController
+@RestController
 public class TaskController {
 
+    private final TaskService taskService;
+
+    public TaskController(TaskService taskService) {
+        this.taskService = taskService;
+    }
+
     @GetMapping("/tasks")
-    public
+    public String getTasks(){
+        return taskService.getAllTasks();
+    }
 
 
 
