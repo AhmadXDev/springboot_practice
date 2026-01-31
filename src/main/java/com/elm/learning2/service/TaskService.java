@@ -3,6 +3,7 @@ package com.elm.learning2.service;
 import com.elm.learning2.dto.TaskRequest;
 import com.elm.learning2.dto.TaskResponse;
 import com.elm.learning2.model.Task;
+import com.elm.learning2.repoistory.TaskRepoistory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -11,12 +12,14 @@ import java.util.List;
 @Service
 public class TaskService {
 
+    private final TaskRepoistory taskRepoistory;
+
+    public TaskService(TaskRepoistory taskRepoistory){
+        this.taskRepoistory = taskRepoistory;
+    }
+
     public List<TaskResponse> getAllTasks() {
-        List<Task> tasks = new ArrayList<>();
-
-        tasks.add(new Task(1L, "Learn Sping Boot", "Understand basics", false));
-        tasks.add(new Task(2L, "Practice Java", "Write daily code", true));
-
+        List<Task> tasks = taskRepoistory.findAll();
         List<TaskResponse> response = new ArrayList<>();
 
         for(Task task : tasks){
@@ -34,11 +37,13 @@ public class TaskService {
 
     public TaskResponse createTask(TaskRequest request){
         Task task = new Task(
-                3L,
+                null,
                 request.getTitle(),
                 request.getDescription(),
                 false
         );
+
+        Task savedTask = taskRepoistory.save(task);
 
         return new TaskResponse(
                 task.getId(),
