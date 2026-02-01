@@ -4,10 +4,8 @@ import com.elm.learning2.dto.TaskRequest;
 import com.elm.learning2.dto.TaskResponse;
 import com.elm.learning2.service.TaskService;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -29,6 +27,19 @@ public class TaskController {
     public TaskResponse createTask(@Valid @RequestBody TaskRequest request){
         return taskService.createTask(request);
     }
+
+    @PutMapping("/tasks/{id}")
+    public TaskResponse updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequest request){
+        return taskService.updateTask(id, request);
+    }
+
+    @DeleteMapping("/tasks/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTask(@PathVariable Long id){
+        taskService.deleteTask(id);
+    }
+
+
 
 
 

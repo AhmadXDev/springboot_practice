@@ -2,6 +2,7 @@ package com.elm.learning2.service;
 
 import com.elm.learning2.dto.TaskRequest;
 import com.elm.learning2.dto.TaskResponse;
+import com.elm.learning2.exception.TaskNotFoundException;
 import com.elm.learning2.model.Task;
 import com.elm.learning2.repoistory.TaskRepoistory;
 import org.springframework.stereotype.Service;
@@ -46,9 +47,38 @@ public class TaskService {
         Task savedTask = taskRepoistory.save(task);
 
         return new TaskResponse(
-                task.getId(),
-                task.getTitle(),
-                task.isCompleted()
+                savedTask.getId(),
+                savedTask.getTitle(),
+                savedTask.isCompleted()
         );
+    }
+
+    public TaskResponse updateTask(Long id, TaskRequest taskRequest) {
+        Task task = new Task(
+                id,
+                taskRequest.getTitle(),
+                taskRequest.getDescription(),
+                false
+        );
+
+        Task updated = taskRepoistory.update(id, task);
+
+        if (updated == null) {
+            throw new TaskNotFoundException(id);
+        }
+
+        return new TaskResponse(
+                updated.getId(),
+                updated.getTitle(),
+                updated.isCompleted()
+        );
+
+    }
+
+    public void deleteTask(Long id) {
+        if (!taskRepoistory.delete(id)) {
+            throw new TaskNotFoundException(id);
+        }
+
     }
 }
