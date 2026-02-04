@@ -1,11 +1,16 @@
 package com.elm.learning2.service;
 
 import com.elm.learning2.dto.TaskRequest;
-import com.elm.learning2.dto.TaskResponse;
+import com.elm.learning2.dto.TaskSummaryResponse;
 import com.elm.learning2.exception.TaskNotFoundException;
 import com.elm.learning2.model.Task;
-import com.elm.learning2.repoistory.TaskRepoistory;
+import com.elm.learning2.repository.TaskRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,30 +18,43 @@ import java.util.List;
 @Service
 public class TaskService {
 
-    private final TaskRepoistory taskRepoistory;
+    private final TaskRepository taskRepository;
 
-    public TaskService(TaskRepoistory taskRepoistory){
-        this.taskRepoistory = taskRepoistory;
+    public TaskService(TaskRepository taskRepository){
+        this.taskRepository = taskRepository;
     }
 
-    public List<TaskResponse> getAllTasks() {
-        List<Task> tasks = taskRepoistory.findAll();
-        List<TaskResponse> response = new ArrayList<>();
+    private static final int MAX_PAGE_SIZE = 50;
+    private static final List<String> ALLOWED_SORT_FIELDS =
+            List.of("id", "title", "description");
 
-        for(Task task : tasks){
-            response.add(
-                    new TaskResponse(
-                            task.getId(),
-                            task.getTitle(),
-                            task.isCompleted()
-                    )
-            );
-        }
-        return response;
+
+    // Get tasks using Pageable
+    public Page<TaskSummaryResponse> getTasks(Integer completed, int page, int size, String sortBy)  {
+        if (page < 0) throw new IllegalArgumentException("Page index must be >= 0");
+
+        if (size < 1 || size > MAX_PAGE_SIZE) throw new IllegalArgumentException("Size must be between 1 and " + MAX_PAGE_SIZE);
+
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) throw new IllegalArgumentException("Invalid sort filed, sortBy must be one of: " + ALLOWED_SORT_FIELDS);
+
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortBy).ascending()
+        );
+
+        Page<Task> taskPage =
+                completed != null
+                    ? taskRepository.findByCompleted(completed == 1, pageable)
+                    : taskRepository.findAll(pageable);
+
+        return taskPage.map(TaskSummaryResponse::from);
+
 
     }
 
-    public TaskResponse createTask(TaskRequest request){
+    public TaskSummaryResponse createTask(TaskRequest request) {
         Task task = new Task(
                 null,
                 request.getTitle(),
@@ -44,41 +62,91 @@ public class TaskService {
                 false
         );
 
-        Task savedTask = taskRepoistory.save(task);
+        Task savedTask = taskRepository.save(task);
 
-        return new TaskResponse(
+        return new TaskSummaryResponse(
                 savedTask.getId(),
                 savedTask.getTitle(),
                 savedTask.isCompleted()
         );
     }
 
-    public TaskResponse updateTask(Long id, TaskRequest taskRequest) {
-        Task task = new Task(
-                id,
-                taskRequest.getTitle(),
-                taskRequest.getDescription(),
-                false
-        );
 
-        Task updated = taskRepoistory.update(id, task);
+    @Transactional
+    public List<TaskSummaryResponse> createTaskBulk(TaskRequest request) {
+        List<TaskSummaryResponse> response = new ArrayList<>();
 
-        if (updated == null) {
-            throw new TaskNotFoundException(id);
+        for (int i = 0; i < 10; i++) {
+            Task task = new Task(
+                    null,
+                    request.getTitle(),
+                    request.getDescription(),
+                    false
+            );
+
+            Task savedTask = taskRepository.save(task);
+
+            response.add(
+                    new TaskSummaryResponse(
+                            savedTask.getId(),
+                            savedTask.getTitle(),
+                            savedTask.isCompleted()
+                    )
+            );
         }
 
-        return new TaskResponse(
-                updated.getId(),
-                updated.getTitle(),
-                updated.isCompleted()
+        return response;
+    }
+
+    public TaskSummaryResponse updateTask(Long id, TaskRequest request) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFoundException(id));
+
+        Task updated = new Task(
+                task.getId(),
+                request.getTitle(),
+                request.getDescription(),
+                task.isCompleted()
+
         );
 
+        Task saved = taskRepository.save(updated);
+
+        return new TaskSummaryResponse(
+                saved.getId(),
+                saved.getTitle(),
+                saved.isCompleted()
+        );
     }
 
     public void deleteTask(Long id) {
-        if (!taskRepoistory.delete(id)) {
+        if (!taskRepository.existsById(id)) {
             throw new TaskNotFoundException(id);
         }
+        taskRepository.deleteById(id);
 
     }
+
+    //! Wrong, I need to return TaskResponse and not expose Task
+    public List<Task> getCompletedTasks() {
+        return taskRepository.findByCompleted(true);
+    }
+
+    //! Same as above
+    public List<Task> getUncompletedTasks() {
+        return taskRepository.findByCompleted(false);
+    }
+
+    public Task findTaskById(Long id) {
+        return taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException(id));
+    }
+
+    public TaskSummaryResponse updateTaskCompletion(Long id, boolean completed) {
+        Task task = taskRepository.findById(id).orElseThrow(() -> new TaskNotFoundException(id));
+        task.markCompleted(completed);
+        Task updatedTAsk = taskRepository.save(task);
+
+        return TaskSummaryResponse.from(updatedTAsk);
+    }
+
 }
