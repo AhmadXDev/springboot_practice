@@ -32,7 +32,7 @@ public class BaseEntity {
         this.updatedAt = LocalDateTime.now();
     }
 
-    protected void setDeleted(boolean deleted) {
+    public void markAsDeleted(boolean deleted) {
         this.deleted = deleted;
     }
 

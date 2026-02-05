@@ -119,12 +119,15 @@ public class TaskService {
         );
     }
 
+    @Transactional()
     public void deleteTask(Long id) {
-        if (!taskRepository.existsById(id)) {
-            throw new TaskNotFoundException(id);
-        }
-        taskRepository.deleteById(id);
+        Task task = findTaskById(id);
 
+        if (task.isDeleted()) {
+            return;
+        }
+
+        task.markAsDeleted(true);
     }
 
     //! Wrong, I need to return TaskResponse and not expose Task
